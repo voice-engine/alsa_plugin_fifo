@@ -19,7 +19,7 @@ typedef struct _snd_pcm_fifo_t
 	int rate;
 	snd_pcm_format_t format;
 	unsigned int frame_bytes;
-	volatile snd_pcm_uframes_t ptr;
+	volatile snd_pcm_sframes_t ptr;
 } snd_pcm_fifo_t;
 
 /*
@@ -44,6 +44,11 @@ static void fifo_read(snd_pcm_ioplug_t *io)
 		{
 			result /= (frame_bytes * io->channels);
 			fifo->ptr += result;
+			// avaoid overflow - fifo->ptr is a signed number
+			if (fifo->ptr > (1 << (sizeof(snd_pcm_sframes_t) * 8 - 2)))
+			{
+				fifo->ptr %= io->buffer_size;
+			}
 		}
 
 		// fprintf(stderr, "read: %d, %ld, %ld, %ld\n", result, fifo->ptr, io->appl_ptr, io->hw_ptr);
@@ -75,6 +80,11 @@ static void fifo_write(snd_pcm_ioplug_t *io)
 		{
 			result /= (frame_bytes * io->channels);
 			fifo->ptr += result;
+			// avaoid overflow - fifo->ptr is a signed number
+			if (fifo->ptr > (1 << (sizeof(snd_pcm_sframes_t) * 8 - 2)))
+			{
+				fifo->ptr %= io->buffer_size;
+			}
 		}
 
 		// fprintf(stderr, "write: %d, %ld, %ld, %ld\n", result, fifo->ptr, io->appl_ptr, io->hw_ptr);
