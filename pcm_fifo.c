@@ -31,33 +31,29 @@ static void fifo_read(snd_pcm_ioplug_t *io)
 	int frame_bytes = fifo->frame_bytes;
 	snd_pcm_uframes_t avail = io->appl_ptr - io->hw_ptr + io->buffer_size;
 
-	while (avail > 0)
+	if (avail > 0)
 	{
-		const snd_pcm_channel_area_t *areas = snd_pcm_ioplug_mmap_areas(io);
-		unsigned int offset = fifo->ptr % io->buffer_size;
-		unsigned int cont = io->buffer_size - offset;
-		int frames = avail > cont ? cont : avail;
-
-		char *dst = (char *)areas->addr + (areas->first + areas->step * offset) / 8;
-		int result = read(fifo->fd, dst, frames * frame_bytes * io->channels);
-		if (result > 0)
+		if (avail > io->period_size)
 		{
-			result /= (frame_bytes * io->channels);
-			fifo->ptr += result;
-			// avaoid overflow - fifo->ptr is a signed number
-			if (fifo->ptr > (1 << (sizeof(snd_pcm_sframes_t) * 8 - 2)))
+			avail = io->period_size;
+		}
+
+		{
+			const snd_pcm_channel_area_t *areas = snd_pcm_ioplug_mmap_areas(io);
+			unsigned int offset = fifo->ptr;
+			unsigned int cont = io->buffer_size - offset;
+			int frames = avail > cont ? cont : avail;
+
+			char *dst = (char *)areas->addr + (areas->first + areas->step * offset) / 8;
+			int result = read(fifo->fd, dst, frames * frame_bytes * io->channels);
+			if (result > 0)
 			{
-				fifo->ptr %= io->buffer_size;
+				result /= (frame_bytes * io->channels);
+				fifo->ptr = (fifo->ptr + result) % io->buffer_size;
 			}
-		}
 
-		// fprintf(stderr, "read: %d, %ld, %ld, %ld\n", result, fifo->ptr, io->appl_ptr, io->hw_ptr);
-		if (result < frames)
-		{
-			break;
+			// fprintf(stderr, "read: %d, %ld, %ld, %ld\n", result, fifo->ptr, io->appl_ptr, io->hw_ptr);
 		}
-
-		avail -= result;
 	}
 }
 
@@ -68,32 +64,28 @@ static void fifo_write(snd_pcm_ioplug_t *io)
 	const snd_pcm_channel_area_t *areas = snd_pcm_ioplug_mmap_areas(io);
 	snd_pcm_uframes_t avail = io->appl_ptr - fifo->ptr;
 
-	while (avail > 0)
+	if (avail > 0)
 	{
-		unsigned int offset = fifo->ptr % io->buffer_size;
-		unsigned int cont = io->buffer_size - offset;
-		int frames = avail > cont ? cont : avail;
-		char *src = (char *)areas->addr + (areas->first + areas->step * offset) / 8;
-
-		int result = write(fifo->fd, src, frames * frame_bytes * io->channels);
-		if (result > 0)
+		if (avail > io->period_size)
 		{
-			result /= (frame_bytes * io->channels);
-			fifo->ptr += result;
-			// avaoid overflow - fifo->ptr is a signed number
-			if (fifo->ptr > (1 << (sizeof(snd_pcm_sframes_t) * 8 - 2)))
+			avail = io->period_size;
+		}
+
+		{
+			unsigned int offset = fifo->ptr;
+			unsigned int cont = io->buffer_size - offset;
+			int frames = avail > cont ? cont : avail;
+			char *src = (char *)areas->addr + (areas->first + areas->step * offset) / 8;
+
+			int result = write(fifo->fd, src, frames * frame_bytes * io->channels);
+			if (result > 0)
 			{
-				fifo->ptr %= io->buffer_size;
+				result /= (frame_bytes * io->channels);
+				fifo->ptr = (fifo->ptr + result) % io->buffer_size;
 			}
-		}
 
-		// fprintf(stderr, "write: %d, %ld, %ld, %ld\n", result, fifo->ptr, io->appl_ptr, io->hw_ptr);
-		if (result < frames)
-		{
-			break;
+			// fprintf(stderr, "write: %d, %ld, %ld, %ld\n", result, fifo->ptr, io->appl_ptr, io->hw_ptr);
 		}
-
-		avail -= result;
 	}
 }
 
@@ -231,8 +223,8 @@ SND_PCM_PLUGIN_DEFINE_FUNC(fifo)
 	if (stream != SND_PCM_STREAM_CAPTURE)
 	{
 		SNDERR("Warning!\nWhen using fifo plugin for playback, "
-				"it may lose the last block of playback. "
-				"\nPlease use file plugin instead");
+			   "it may lose the last block of playback. "
+			   "\nPlease use file plugin instead");
 	}
 
 	snd_config_for_each(i, next, conf)
