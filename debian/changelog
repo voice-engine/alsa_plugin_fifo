@@ -1,0 +1,5 @@
+alsa-plugin-fifo (1.0.0-1) UNRELEASED; urgency=medium
+
+  * Initial release. (Closes: #XXXXXX)
+
+ -- Yihui Xiong <yihui.xiong@hotmail.com>  Mon, 27 May 2019 15:05:46 +0800

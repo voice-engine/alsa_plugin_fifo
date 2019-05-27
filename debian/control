@@ -1,0 +1,12 @@
+Source: alsa-plugin-fifo
+Section: libs
+Priority: optional
+Maintainer: Yihui Xiong <yihui.xiong@hotmail.com>
+Homepage: https://github.com/voice-engine/alsa_plugin_fifo
+Build-Depends: build-essential, debhelper (>= 9), libasound2-dev
+
+Package: libasound2-plugin-fifo
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Another ALSA file plugin which do not require a slave
+
