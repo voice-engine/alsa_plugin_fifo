@@ -7,10 +7,10 @@ Q	?= @
 CC 	:= gcc
 CFLAGS += -I. -Wall -funroll-loops -ffast-math -fPIC -DPIC -O0 -g
 LD := gcc
-LDFLAGS += -Wall -shared -lasound
+LDFLAGS += -Wall -shared 
 
 SND_PCM_OBJECTS = pcm_fifo.o
-SND_PCM_LIBS =
+SND_PCM_LIBS = -lasound
 SND_PCM_BIN = libasound_module_pcm_fifo.so
 
 #SND_CTL_OBJECTS = ctl_fifo.o ladspa_utils.o
@@ -32,7 +32,7 @@ dep:
 
 $(SND_PCM_BIN): $(SND_PCM_OBJECTS)
 	@echo LD $@
-	$(Q)$(LD) $(LDFLAGS) $(SND_PCM_LIBS) $(SND_PCM_OBJECTS) -o $(SND_PCM_BIN)
+	$(Q)$(LD) $(LDFLAGS) $(SND_PCM_OBJECTS) $(SND_PCM_LIBS) -o $(SND_PCM_BIN)
 
 #$(SND_CTL_BIN): $(SND_CTL_OBJECTS)
 #	@echo LD $@
